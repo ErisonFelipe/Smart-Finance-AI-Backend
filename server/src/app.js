@@ -18,14 +18,18 @@ const iaRoutes = require("./routes/iaRoutes");
 const userRoutes = require("./routes/userRoutes");
 
 // Middlewares globais
-app.use(cors({
-  origin: [
-    "https://smart-finance-ai-one.vercel.app",
-    "https://smart-finance-ai-zeta.vercel.app",
-    "http://localhost:5173"
-  ],
-  credentials: true
-}));
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  
+  // Responder imediatamente a requisições preflight
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 app.use(express.json());
 
 // Rotas
