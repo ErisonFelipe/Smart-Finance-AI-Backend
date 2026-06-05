@@ -4,21 +4,18 @@
   "description": "Backend do Assistente Financeiro IA",
   "main": "server.js",
   "scripts": {
-"dev": "nodemon server.js",
-   "start": "npx prisma migrate deploy && node prisma/seed.js && node server.js",
-    "postinstall": "npx prisma generate",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "build": "npm install --include=dev && npx prisma generate && npx prisma migrate deploy && node prisma/seed.js",
     "prisma:migrate": "npx prisma migrate dev --name init",
     "prisma:studio": "npx prisma studio",
-    "seed": "node prisma/seed.js"
-  },
-  "prisma": {
     "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-   "@google/generative-ai": "^0.24.1",
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
