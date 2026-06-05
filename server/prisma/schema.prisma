@@ -12,8 +12,7 @@ model User {
   name          String
   email         String        @unique
   password      String
-  monthlyIncome Float         @default(0)
-  photoUrl      String?       // ← NOVO
+  monthlyIncome Float         @default(0)  
   transactions  Transaction[]
   debts         Debt[]
   boletos       Boleto[]
