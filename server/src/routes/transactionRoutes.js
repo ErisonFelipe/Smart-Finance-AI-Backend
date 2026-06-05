@@ -8,6 +8,7 @@ router.use(authMiddleware);
 router.get("/", ctrl.list);
 router.post("/", ctrl.create);
 router.delete("/all", ctrl.removeAll);
+router.get("/calendar", ctrl.calendar);
 router.put("/:id", ctrl.update);
 router.delete("/:id", ctrl.remove);
 

@@ -118,4 +118,66 @@ async function removeAll(req, res, next) {
   }
 }
 
-module.exports = { list, create, update, remove, removeAll };
+const calendar = async (req, res, next) => {
+  try {
+    const { month, year } = req.query;
+    
+    const startDate = new Date(Number(year), Number(month) - 1, 1);
+    const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId: req.userId,
+        dueDate: { gte: startDate, lte: endDate },
+      },
+      select: {
+        id: true,
+        description: true,
+        amount: true,
+        type: true,
+        dueDate: true,
+        paid: true,
+      },
+    });
+
+    const boletos = await prisma.boleto.findMany({
+      where: {
+        userId: req.userId,
+        dueDate: { gte: startDate, lte: endDate },
+      },
+      select: {
+        id: true,
+        description: true,
+        amount: true,
+        dueDate: true,
+        paid: true,
+      },
+    });
+
+    // Formatar eventos
+    const events = [
+      ...transactions.map((t) => ({
+        id: t.id,
+        descricao: t.description,
+        valor: t.amount,
+        data: t.dueDate,
+        tipo: t.type === "income" ? "renda" : t.type === "expense" ? "despesa" : "investimento",
+        pago: t.paid,
+      })),
+      ...boletos.map((b) => ({
+        id: b.id,
+        descricao: b.description,
+        valor: b.amount,
+        data: b.dueDate,
+        tipo: "boleto",
+        pago: b.paid,
+      })),
+    ];
+
+    res.json(events);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { list, create, update, remove, removeAll, calendar };
