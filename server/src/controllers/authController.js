@@ -39,4 +39,20 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+const checkEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email é obrigatório" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    res.json({ exists: !!user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, checkEmail };

@@ -12,7 +12,8 @@ model User {
   name          String
   email         String        @unique
   password      String
-  monthlyIncome Float         @default(0)  
+  monthlyIncome Float         @default(0)
+  payDay        Int       @default(1)  // NOVO: dia do mês que recebe  
   transactions  Transaction[]
   debts         Debt[]
   boletos       Boleto[]
