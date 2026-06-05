@@ -3,6 +3,8 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
+const app = express();
+
 const errorHandler = require("./middlewares/errorHandler");
 
 // Rotas
@@ -15,10 +17,15 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const iaRoutes = require("./routes/iaRoutes");
 const userRoutes = require("./routes/userRoutes");
 
-const app = express();
-
 // Middlewares globais
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://smart-finance-ai-one.vercel.app",
+    "https://smart-finance-ai-zeta.vercel.app",
+    "http://localhost:5173"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Rotas
