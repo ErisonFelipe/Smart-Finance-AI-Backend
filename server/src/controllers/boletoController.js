@@ -46,4 +46,52 @@ const remove = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { list, create, remove };
+const togglePaid = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { paid } = req.body;
+
+    const boleto = await prisma.boleto.findUnique({ where: { id } });
+
+    if (!boleto || boleto.userId !== req.userId) {
+      return res.status(404).json({ error: "Boleto não encontrado" });
+    }
+
+    const updated = await prisma.boleto.update({
+      where: { id },
+      data: { paid: paid !== false },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+
+  const update = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { description, amount, dueDate, barcode } = req.body;
+
+    const boleto = await prisma.boleto.findUnique({ where: { id } });
+    if (!boleto || boleto.userId !== req.userId) {
+      return res.status(404).json({ error: "Boleto não encontrado" });
+    }
+
+    const data = {};
+    if (description) data.description = description;
+    if (amount) data.amount = Number(amount);
+    if (dueDate) data.dueDate = new Date(dueDate);
+    if (barcode !== undefined) data.barcode = barcode;
+
+    const updated = await prisma.boleto.update({
+      where: { id },
+      data,
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { list, create, remove, update };

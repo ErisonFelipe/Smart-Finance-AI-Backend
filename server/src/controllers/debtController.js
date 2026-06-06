@@ -121,5 +121,31 @@ const payInstallment = async (req, res, next) => {
     res.json(updatedDebt);
   } catch (error) { next(error); }
 };
+const update = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, totalAmount, categoryId } = req.body;
 
-module.exports = { list, create, remove, payInstallment };
+    const debt = await prisma.debt.findUnique({ where: { id } });
+    if (!debt || debt.userId !== req.userId) {
+      return res.status(404).json({ error: "Dívida não encontrada" });
+    }
+
+    const data = {};
+    if (name) data.name = name;
+    if (totalAmount) data.totalAmount = Number(totalAmount);
+    if (categoryId) data.categoryId = categoryId;
+
+    const updated = await prisma.debt.update({
+      where: { id },
+      data,
+      include: { category: true, installmentList: { orderBy: { number: "asc" } } },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { list, create, remove, payInstallment, update };

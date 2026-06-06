@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
-const { list, create, remove } = require("../controllers/boletoController");
+const ctrl = require("../controllers/boletoController");
 
 router.use(authMiddleware);
 
-router.get("/", list);
-router.post("/", create);
-router.delete("/:id", remove);
+router.get("/", ctrl.list);
+router.post("/", ctrl.create);
+router.put("/:id", ctrl.update);
+router.delete("/:id", ctrl.remove);
 
 module.exports = router;
