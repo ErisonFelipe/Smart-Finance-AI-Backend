@@ -1,14 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
-const { list, create, remove } = require("../controllers/debtController");
-const { list, create, remove, payInstallment } = require("../controllers/debtController");
+const ctrl = require("../controllers/debtController");
 
 router.use(authMiddleware);
 
-router.get("/", list);
-router.post("/", create);
-router.delete("/:id", remove);
-router.put("/installment/:id", payInstallment);
+router.get("/", ctrl.list);
+router.post("/", ctrl.create);
+router.put("/installment/:id", ctrl.payInstallment);
+router.delete("/:id", ctrl.remove);
 
 module.exports = router;

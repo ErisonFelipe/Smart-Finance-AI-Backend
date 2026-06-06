@@ -71,7 +71,7 @@ const remove = async (req, res, next) => {
 
 const payInstallment = async (req, res, next) => {
   try {
-    const { id } = req.params; // ID da parcela (installment)
+    const { id } = req.params;
     const { paid } = req.body;
 
     const installment = await prisma.installment.findUnique({
@@ -83,15 +83,9 @@ const payInstallment = async (req, res, next) => {
       return res.status(404).json({ error: "Parcela não encontrada" });
     }
 
-    // Atualizar parcela
     await prisma.installment.update({
       where: { id },
       data: { paid: paid !== false },
-    });
-
-    // Recalcular total pago da dívida
-    const paidInstallments = await prisma.installment.count({
-      where: { debtId: installment.debtId, paid: true },
     });
 
     const totalPaid = await prisma.installment.aggregate({
@@ -99,17 +93,17 @@ const payInstallment = async (req, res, next) => {
       _sum: { amount: true },
     });
 
-    const totalInstallments = await prisma.installment.count({
+    const paidCount = await prisma.installment.count({
+      where: { debtId: installment.debtId, paid: true },
+    });
+
+    const totalCount = await prisma.installment.count({
       where: { debtId: installment.debtId },
     });
 
-    // Atualizar status da dívida
     let status = "active";
-    if (paidInstallments === totalInstallments) {
-      status = "finished";
-    } else if (new Date(installment.dueDate) < new Date() && paid === false) {
-      status = "late";
-    }
+    if (paidCount === totalCount) status = "finished";
+    else if (new Date(installment.dueDate) < new Date()) status = "late";
 
     await prisma.debt.update({
       where: { id: installment.debtId },
@@ -125,9 +119,7 @@ const payInstallment = async (req, res, next) => {
     });
 
     res.json(updatedDebt);
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
 
 module.exports = { list, create, remove, payInstallment };
