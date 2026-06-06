@@ -1,12 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middlewares/authMiddleware");
-const { list, create, remove } = require("../controllers/categoryController");
+const { summary } = require("../controllers/dashboardController");
 
 router.use(authMiddleware);
 
-router.get("/", list);
-router.post("/", create);
-router.delete("/:id", remove);
+router.get("/summary", summary);
 
 module.exports = router;
