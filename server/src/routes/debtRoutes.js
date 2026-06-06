@@ -7,5 +7,6 @@ router.use(authMiddleware);
 
 router.get("/", list);
 router.post("/", create);
+router.delete("/:id", remove);
 
 module.exports = router;
