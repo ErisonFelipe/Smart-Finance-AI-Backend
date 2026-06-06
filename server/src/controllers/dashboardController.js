@@ -1,40 +1,67 @@
 const { PrismaClient } = require("@prisma/client");
-
 const prisma = new PrismaClient();
 
 const summary = async (req, res, next) => {
   try {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    const [receitas, despesas, investimentos] = await Promise.all([
+    // Paralelizar todas as queries
+    const [
+      receitas,
+      despesas,
+      investimentos,
+      totalReceitas,
+      totalDespesas,
+      totalInvestimentos,
+      despesasPorCategoria,
+      categorias,
+      proximosVencimentos,
+    ] = await Promise.all([
+      // Receitas do mês
       prisma.transaction.aggregate({
         where: { userId: req.userId, type: "income", dueDate: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
       }),
+      // Despesas do mês
       prisma.transaction.aggregate({
         where: { userId: req.userId, type: "expense", dueDate: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
       }),
+      // Investimentos do mês
       prisma.transaction.aggregate({
         where: { userId: req.userId, type: "investment", dueDate: { gte: startOfMonth, lte: endOfMonth } },
         _sum: { amount: true },
       }),
-    ]);
-
-    const [totalReceitas, totalDespesas, totalInvestimentos] = await Promise.all([
+      // Total histórico receitas
       prisma.transaction.aggregate({
         where: { userId: req.userId, type: "income" },
         _sum: { amount: true },
       }),
+      // Total histórico despesas
       prisma.transaction.aggregate({
         where: { userId: req.userId, type: "expense" },
         _sum: { amount: true },
       }),
+      // Total histórico investimentos
       prisma.transaction.aggregate({
         where: { userId: req.userId, type: "investment" },
         _sum: { amount: true },
+      }),
+      // Despesas por categoria no mês
+      prisma.transaction.groupBy({
+        by: ["categoryId"],
+        where: { userId: req.userId, type: "expense", dueDate: { gte: startOfMonth, lte: endOfMonth } },
+        _sum: { amount: true },
+      }),
+      // Categorias do usuário
+      prisma.category.findMany({ where: { userId: req.userId } }),
+      // Próximos vencimentos (inclui boletos)
+      prisma.transaction.findMany({
+        where: { userId: req.userId, paid: false, dueDate: { gte: now } },
+        orderBy: { dueDate: "asc" },
+        take: 10,
       }),
     ]);
 
@@ -42,28 +69,24 @@ const summary = async (req, res, next) => {
     const despesasMes = despesas._sum.amount || 0;
     const investimentosMes = investimentos._sum.amount || 0;
 
-    const saldoCorrente = (totalReceitas._sum.amount || 0) - (totalDespesas._sum.amount || 0) - (totalInvestimentos._sum.amount || 0);
+    const saldoCorrente =
+      (totalReceitas._sum.amount || 0) -
+      (totalDespesas._sum.amount || 0) -
+      (totalInvestimentos._sum.amount || 0);
+
     const patrimonioTotal = saldoCorrente + (totalInvestimentos._sum.amount || 0);
 
-    // Despesas por categoria
-    const despesasPorCategoria = await prisma.transaction.groupBy({
-      by: ["categoryId"],
-      where: { userId: req.userId, type: "expense", dueDate: { gte: startOfMonth, lte: endOfMonth } },
-      _sum: { amount: true },
-    });
-
-    const categorias = await prisma.category.findMany({ where: { userId: req.userId } });
-    const categoriasComValor = despesasPorCategoria.map((item) => {
-      const categoria = categorias.find((c) => c.id === item.categoryId);
-      return { nome: categoria?.name || "Sem categoria", valor: item._sum.amount || 0 };
-    });
-
-    // Próximos vencimentos
-    const proximosVencimentos = await prisma.transaction.findMany({
-      where: { userId: req.userId, paid: false, dueDate: { gte: now } },
-      orderBy: { dueDate: "asc" },
-      take: 5,
-    });
+    // Mapear categorias com valores
+    const categoriasComValor = despesasPorCategoria
+      .map((item) => {
+        const categoria = categorias.find((c) => c.id === item.categoryId);
+        return {
+          nome: categoria?.name || "Sem categoria",
+          valor: item._sum.amount || 0,
+        };
+      })
+      .filter((c) => c.valor > 0)
+      .sort((a, b) => b.valor - a.valor);
 
     res.json({
       saldoAtual: saldoCorrente,

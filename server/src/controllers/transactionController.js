@@ -5,18 +5,27 @@ const prisma = new PrismaClient();
 
 const list = async (req, res, next) => {
   try {
-    const { month, year, type, status } = req.query;
+    const { month, year, type, status, search } = req.query;
     const where = { userId: req.userId };
 
+    // Filtro por mês/ano
     if (month && year) {
       const startDate = new Date(Number(year), Number(month) - 1, 1);
       const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
       where.dueDate = { gte: startDate, lte: endDate };
     }
 
+    // Filtro por tipo
     if (type && type !== "all") where.type = type;
+
+    // Filtro por status
     if (status === "paid") where.paid = true;
     else if (status === "pending") where.paid = false;
+
+    // Filtro por busca textual
+    if (search) {
+      where.description = { contains: search };
+    }
 
     const transactions = await prisma.transaction.findMany({
       where,
@@ -38,7 +47,7 @@ const create = async (req, res, next) => {
       data: {
         type: data.type,
         amount: data.amount,
-        description: data.description,
+        description: data.description.trim(),
         dueDate: new Date(data.dueDate),
         categoryId: data.categoryId,
         userId: req.userId,
@@ -59,10 +68,20 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const data = req.body;
 
+    // Verificar se a transação existe e pertence ao usuário
+    const existing = await prisma.transaction.findFirst({
+      where: { id, userId: req.userId },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: "Transação não encontrada" });
+    }
+
+    const data = req.body;
     const updateData = {};
-    if (data.description !== undefined) updateData.description = data.description;
+
+    if (data.description !== undefined) updateData.description = data.description.trim();
     if (data.amount !== undefined) updateData.amount = Number(data.amount);
     if (data.type !== undefined) updateData.type = data.type;
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
@@ -72,16 +91,13 @@ const update = async (req, res, next) => {
       updateData.paymentDate = data.paid ? new Date() : null;
     }
 
-    const transaction = await prisma.transaction.updateMany({
-      where: { id, userId: req.userId },
+    const updated = await prisma.transaction.update({
+      where: { id },
       data: updateData,
+      include: { category: true },
     });
 
-    if (transaction.count === 0) {
-      return res.status(404).json({ error: "Transação não encontrada" });
-    }
-
-    res.json({ message: "Transação atualizada" });
+    res.json(updated);
   } catch (error) {
     next(error);
   }
@@ -91,13 +107,15 @@ const remove = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const transaction = await prisma.transaction.deleteMany({
+    const transaction = await prisma.transaction.findFirst({
       where: { id, userId: req.userId },
     });
 
-    if (transaction.count === 0) {
+    if (!transaction) {
       return res.status(404).json({ error: "Transação não encontrada" });
     }
+
+    await prisma.transaction.delete({ where: { id } });
 
     res.json({ message: "Transação removida" });
   } catch (error) {
@@ -105,8 +123,7 @@ const remove = async (req, res, next) => {
   }
 };
 
-// ✅ Função para deletar TODAS as transações
-async function removeAll(req, res, next) {
+const removeAll = async (req, res, next) => {
   try {
     const result = await prisma.transaction.deleteMany({
       where: { userId: req.userId },
@@ -116,45 +133,26 @@ async function removeAll(req, res, next) {
   } catch (error) {
     next(error);
   }
-}
+};
 
 const calendar = async (req, res, next) => {
   try {
     const { month, year } = req.query;
-    
+
     const startDate = new Date(Number(year), Number(month) - 1, 1);
     const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        userId: req.userId,
-        dueDate: { gte: startDate, lte: endDate },
-      },
-      select: {
-        id: true,
-        description: true,
-        amount: true,
-        type: true,
-        dueDate: true,
-        paid: true,
-      },
-    });
+    const [transactions, boletos] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { userId: req.userId, dueDate: { gte: startDate, lte: endDate } },
+        select: { id: true, description: true, amount: true, type: true, dueDate: true, paid: true },
+      }),
+      prisma.boleto.findMany({
+        where: { userId: req.userId, dueDate: { gte: startDate, lte: endDate } },
+        select: { id: true, description: true, amount: true, dueDate: true, paid: true },
+      }),
+    ]);
 
-    const boletos = await prisma.boleto.findMany({
-      where: {
-        userId: req.userId,
-        dueDate: { gte: startDate, lte: endDate },
-      },
-      select: {
-        id: true,
-        description: true,
-        amount: true,
-        dueDate: true,
-        paid: true,
-      },
-    });
-
-    // Formatar eventos
     const events = [
       ...transactions.map((t) => ({
         id: t.id,
@@ -181,6 +179,3 @@ const calendar = async (req, res, next) => {
 };
 
 module.exports = { list, create, update, remove, removeAll, calendar };
-// <!-- force rebuild v2 -->
-//  <!-- force rebuild v2 -->
-//    <!-- force rebuild v2 -->

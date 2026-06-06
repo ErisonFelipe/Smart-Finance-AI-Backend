@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 model User {
@@ -13,7 +14,8 @@ model User {
   email         String        @unique
   password      String
   monthlyIncome Float         @default(0)
-  payDay        Int       @default(1)  // NOVO: dia do mês que recebe  
+  payDay        Int           @default(1)
+  photoUrl      String?       // URL da foto de perfil
   transactions  Transaction[]
   debts         Debt[]
   boletos       Boleto[]
@@ -28,12 +30,13 @@ model Category {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   icon         String        @default("tag")
-  type         String
+  type         String        // income | expense | investment
   isDefault    Boolean       @default(false)
   transactions Transaction[]
   debts        Debt[]
 
   @@unique([userId, name, type])
+  @@index([userId])
 }
 
 model Transaction {
@@ -42,7 +45,7 @@ model Transaction {
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoryId         String
   category           Category  @relation(fields: [categoryId], references: [id])
-  type               String
+  type               String    // income | expense | investment
   amount             Float
   description        String
   dueDate            DateTime
@@ -52,6 +55,9 @@ model Transaction {
   currentInstallment Int       @default(1)
   paid               Boolean   @default(false)
   createdAt          DateTime  @default(now())
+
+  @@index([userId, dueDate])
+  @@index([categoryId])
 }
 
 model Debt {
@@ -65,9 +71,11 @@ model Debt {
   paidAmount      Float         @default(0)
   startDate       DateTime
   installments    Int
-  status          String        @default("active")
+  status          String        @default("active") // active | finished | late
   installmentList Installment[]
   createdAt       DateTime      @default(now())
+
+  @@index([userId])
 }
 
 model Installment {
@@ -78,6 +86,8 @@ model Installment {
   amount  Float
   dueDate DateTime
   paid    Boolean  @default(false)
+
+  @@index([debtId])
 }
 
 model Boleto {
@@ -90,4 +100,6 @@ model Boleto {
   paid        Boolean  @default(false)
   description String
   createdAt   DateTime @default(now())
+
+  @@index([userId])
 }

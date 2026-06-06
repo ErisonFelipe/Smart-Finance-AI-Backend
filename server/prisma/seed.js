@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Iniciando seed no MySQL...");
+  console.log("🌱 Iniciando seed no MySQL...\n");
 
   // 1. Criar usuário de teste
   const hashedPassword = await bcrypt.hash("123456", 10);
@@ -16,6 +16,7 @@ async function main() {
       email: "joao@teste.com",
       password: hashedPassword,
       monthlyIncome: 8000,
+      payDay: 5,
     },
   });
   console.log("✅ Usuário criado:", user.email);
@@ -73,21 +74,26 @@ async function main() {
 
   const getCategoryByType = (type) => {
     const cats = createdCategories.filter((c) => c.type === type);
+    if (cats.length === 0) return createdCategories[0]; // fallback
     return cats[Math.floor(Math.random() * cats.length)];
   };
 
+  let transactionCount = 0;
   for (const trans of transactionsData) {
     const category = getCategoryByType(trans.type);
-    await prisma.transaction.create({
-      data: {
-        ...trans,
-        userId: user.id,
-        categoryId: category.id,
-        paymentDate: trans.paid ? trans.dueDate : null,
-      },
-    });
+    if (category) {
+      await prisma.transaction.create({
+        data: {
+          ...trans,
+          userId: user.id,
+          categoryId: category.id,
+          paymentDate: trans.paid ? trans.dueDate : null,
+        },
+      });
+      transactionCount++;
+    }
   }
-  console.log(`✅ ${transactionsData.length} transações criadas`);
+  console.log(`✅ ${transactionCount} transações criadas`);
 
   // 4. Criar dívidas
   const debtsData = [
@@ -106,7 +112,7 @@ async function main() {
         ...data,
         userId: user.id,
         categoryId: category.id,
-        paidAmount,
+        paidAmount: Math.round(paidAmount * 100) / 100,
       },
     });
 
@@ -143,6 +149,7 @@ async function main() {
   console.log("\n🎉 Seed concluído no MySQL!");
   console.log("📧 Login: joao@teste.com");
   console.log("🔑 Senha: 123456");
+  console.log("💡 Use este usuário apenas para testes. Crie sua própria conta!");
 }
 
 main()
