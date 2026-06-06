@@ -69,4 +69,65 @@ const remove = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { list, create, remove };
+const payInstallment = async (req, res, next) => {
+  try {
+    const { id } = req.params; // ID da parcela (installment)
+    const { paid } = req.body;
+
+    const installment = await prisma.installment.findUnique({
+      where: { id },
+      include: { debt: true },
+    });
+
+    if (!installment || installment.debt.userId !== req.userId) {
+      return res.status(404).json({ error: "Parcela não encontrada" });
+    }
+
+    // Atualizar parcela
+    await prisma.installment.update({
+      where: { id },
+      data: { paid: paid !== false },
+    });
+
+    // Recalcular total pago da dívida
+    const paidInstallments = await prisma.installment.count({
+      where: { debtId: installment.debtId, paid: true },
+    });
+
+    const totalPaid = await prisma.installment.aggregate({
+      where: { debtId: installment.debtId, paid: true },
+      _sum: { amount: true },
+    });
+
+    const totalInstallments = await prisma.installment.count({
+      where: { debtId: installment.debtId },
+    });
+
+    // Atualizar status da dívida
+    let status = "active";
+    if (paidInstallments === totalInstallments) {
+      status = "finished";
+    } else if (new Date(installment.dueDate) < new Date() && paid === false) {
+      status = "late";
+    }
+
+    await prisma.debt.update({
+      where: { id: installment.debtId },
+      data: {
+        paidAmount: totalPaid._sum.amount || 0,
+        status,
+      },
+    });
+
+    const updatedDebt = await prisma.debt.findUnique({
+      where: { id: installment.debtId },
+      include: { category: true, installmentList: { orderBy: { number: "asc" } } },
+    });
+
+    res.json(updatedDebt);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { list, create, remove, payInstallment };
