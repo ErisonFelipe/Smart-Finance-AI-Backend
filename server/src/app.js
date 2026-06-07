@@ -16,6 +16,7 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const iaRoutes = require("./routes/iaRoutes");
 const userRoutes = require("./routes/userRoutes");
+const projectionRoutes = require("./routes/projectionRoutes");
 
 // Middlewares globais
 app.use((req, res, next) => {
@@ -41,6 +42,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ia", iaRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/projection", projectionRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

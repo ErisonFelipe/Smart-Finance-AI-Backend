@@ -15,20 +15,20 @@ const summary = async (req, res, next) => {
       parcelasPagasNoMes, parcelasPorCategoria,
     ] = await Promise.all([
       // Receitas do mês
-      prisma.transaction.aggregate({
-        where: { userId: req.userId, type: "income", dueDate: { gte: startOfMonth, lte: endOfMonth } },
-        _sum: { amount: true },
-      }),
+     prisma.transaction.aggregate({
+  where: { userId: req.userId, type: "income", paid: true, paymentDate: { gte: startOfMonth, lte: endOfMonth } },
+  _sum: { amount: true },
+}),
       // Despesas do mês (transações)
       prisma.transaction.aggregate({
-        where: { userId: req.userId, type: "expense", dueDate: { gte: startOfMonth, lte: endOfMonth } },
-        _sum: { amount: true },
-      }),
+  where: { userId: req.userId, type: "expense", paid: true, paymentDate: { gte: startOfMonth, lte: endOfMonth } },
+  _sum: { amount: true },
+}),
       // Investimentos do mês
       prisma.transaction.aggregate({
-        where: { userId: req.userId, type: "investment", dueDate: { gte: startOfMonth, lte: endOfMonth } },
-        _sum: { amount: true },
-      }),
+  where: { userId: req.userId, type: "investment", paid: true, paymentDate: { gte: startOfMonth, lte: endOfMonth } },
+  _sum: { amount: true },
+}),
       // Total histórico
       prisma.transaction.aggregate({ where: { userId: req.userId, type: "income" }, _sum: { amount: true } }),
       prisma.transaction.aggregate({ where: { userId: req.userId, type: "expense" }, _sum: { amount: true } }),
