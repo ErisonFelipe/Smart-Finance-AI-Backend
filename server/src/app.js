@@ -43,6 +43,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ia", iaRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/projection", projectionRoutes);
+app.use("/api/goals", require("./routes/goalRoutes"));
 
 // Health check
 app.get("/api/health", (req, res) => {

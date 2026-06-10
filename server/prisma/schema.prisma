@@ -103,3 +103,20 @@ model Boleto {
 
   @@index([userId])
 }
+
+model Goal {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  deadline      DateTime?
+  color         String    @default("#059669")
+  icon          String    @default("target")
+  status        String    @default("active") // active | completed | cancelled
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+}
